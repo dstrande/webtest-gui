@@ -35,7 +35,7 @@ class TestApp(QWidget):
         self.setWindowTitle("Website Testing Tracker")
         self.setWindowIcon(QIcon("app_icon.png"))  # Set application icon for dock
 
-        self.test_directory = Path("test_scripts")
+        self.test_directory = Path("tests")
 
         self.layout = QVBoxLayout()
 
@@ -147,31 +147,23 @@ class TestApp(QWidget):
         threading.Thread(target=self._execute_tests, args=(selected_tests,)).start()
 
     def _execute_tests(self, test_files):
-        """Execute each test file using subprocess and stream output to the GUI.
-
-        Args:
-            test_files (list[str]): List of test filenames to execute.
-        """
+        """Execute each test file using pytest and stream output to the GUI."""
         for test_file in test_files:
             file_path = self.test_directory / test_file
             self.signals.log_signal.emit(f"\nRunning {test_file}...")
 
-            # Run pytest for each test file
+            # Run pytest and capture all output
             process = subprocess.Popen(
-                ["pytest", str(file_path)],  # Run pytest with the test file
+                ["pytest", str(file_path)],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
             )
 
-            output = ""
-            for line in process.stdout:
+            output, _ = process.communicate()
+            for line in output.splitlines():
                 self.signals.log_signal.emit(line.strip())
-                output += line
 
-            process.wait()
-
-            # Check if pytest passed or failed the test
             if process.returncode == 0:
                 self.signals.update_status_signal.emit(test_file, "Passed")
             else:
