@@ -1,6 +1,8 @@
+# -*- coding: UTF-8 -*-
+
 import sys
 import threading
-import os
+from styles import dark_stylesheet
 from pathlib import Path
 import subprocess
 
@@ -19,7 +21,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QCheckBox,
 )
-from PySide6.QtCore import Signal, QObject, Qt
+from PySide6.QtCore import Signal, QObject, Qt, QSize
 from PySide6.QtGui import QIcon
 
 
@@ -54,7 +56,11 @@ class TestApp(QWidget):
         self.test_table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
         self.run_button = QPushButton("Run Selected Tests")
-        self.change_dir_button = QPushButton("Change Test Directory")
+        self.change_dir_button = QPushButton(" Change Test Directory")
+        self.run_button.setIcon(QIcon("assets/play.svg"))
+        self.run_button.setIconSize(QSize(25, 25))
+        self.change_dir_button.setIcon(QIcon("assets/folder.svg"))
+        self.change_dir_button.setIconSize(QSize(25, 25))
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.run_button)
@@ -64,6 +70,8 @@ class TestApp(QWidget):
         self.layout.addWidget(self.test_table)
         self.layout.addLayout(button_layout)
         self.layout.addWidget(self.text_area)
+        self.layout.setContentsMargins(10, 10, 10, 10)
+        self.layout.setSpacing(10)
 
         self.setLayout(self.layout)
 
@@ -123,11 +131,14 @@ class TestApp(QWidget):
             layout = QHBoxLayout(checkbox_widget)
             layout.addWidget(checkbox)
             layout.setAlignment(Qt.AlignCenter)
-            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setContentsMargins(8, 0, 0, 0)
             self.test_table.setCellWidget(row_pos, 0, checkbox_widget)
 
             self.test_table.setItem(row_pos, 1, QTableWidgetItem(file.name))
             self.test_table.setItem(row_pos, 2, QTableWidgetItem("Untested"))
+            self.test_table.setAlternatingRowColors(True)
+            tab_sty = """QTableWidget { alternate-background-color: #333; background-color: #2b2b2b; }"""
+            self.test_table.setStyleSheet(tab_sty)
 
     def run_selected_tests(self):
         """Run all selected test files in a background thread."""
@@ -165,9 +176,9 @@ class TestApp(QWidget):
                 self.signals.log_signal.emit(line.strip())
 
             if process.returncode == 0:
-                self.signals.update_status_signal.emit(test_file, "Passed")
+                self.signals.update_status_signal.emit(test_file, "✅ Passed")
             else:
-                self.signals.update_status_signal.emit(test_file, "Failed")
+                self.signals.update_status_signal.emit(test_file, "❌ Failed")
 
         self.signals.log_signal.emit("\nAll selected tests completed.")
         self.status_label.setText("Status: Idle")
@@ -175,6 +186,7 @@ class TestApp(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setStyleSheet(dark_stylesheet)
     app.setWindowIcon(QIcon("app_icon.png"))
     window = TestApp()
     window.resize(800, 600)
