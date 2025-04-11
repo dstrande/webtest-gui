@@ -46,8 +46,11 @@ class TestApp(QWidget):
         self.text_area.setReadOnly(True)
 
         self.test_table = QTableWidget()
-        self.test_table.setColumnCount(3)
-        self.test_table.setHorizontalHeaderLabels(["Run", "Test File", "Status"])
+        self.test_table.setColumnCount(4)
+        self.test_table.setHorizontalHeaderLabels(
+            ["Run", "Test File", "Test Function", "Status"]
+        )
+
         self.test_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeToContents
         )
@@ -100,8 +103,10 @@ class TestApp(QWidget):
             status (str): 'Passed' or 'Failed'
         """
         for row in range(self.test_table.rowCount()):
-            if self.test_table.item(row, 1).text() == test_name:
-                self.test_table.setItem(row, 2, QTableWidgetItem(status))
+            row_text = self.test_table.item(row, 1).text() + "::"
+            row_text += self.test_table.item(row, 2).text()
+            if row_text == test_name:
+                self.test_table.setItem(row, 3, QTableWidgetItem(status))
                 break
 
     def change_test_directory(self):
@@ -121,21 +126,36 @@ class TestApp(QWidget):
                 f"Test directory not found: {self.test_directory}"
             )
             return
+
+        import ast
+
         for file in self.test_directory.glob("test_*.py"):
-            row_pos = self.test_table.rowCount()
-            self.test_table.insertRow(row_pos)
+            with open(file, "r", encoding="utf-8") as f:
+                tree = ast.parse(f.read(), filename=file.name)
 
-            checkbox = QCheckBox()
-            checkbox.setChecked(True)
-            checkbox_widget = QWidget()
-            layout = QHBoxLayout(checkbox_widget)
-            layout.addWidget(checkbox)
-            layout.setAlignment(Qt.AlignCenter)
-            layout.setContentsMargins(8, 0, 0, 0)
-            self.test_table.setCellWidget(row_pos, 0, checkbox_widget)
+            for node in tree.body:
+                if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+                    test_name = f"{file.name}::{node.name}"
+                    row_pos = self.test_table.rowCount()
+                    self.test_table.insertRow(row_pos)
 
-            self.test_table.setItem(row_pos, 1, QTableWidgetItem(file.name))
-            self.test_table.setItem(row_pos, 2, QTableWidgetItem("Untested"))
+                    checkbox = QCheckBox()
+                    checkbox.setChecked(True)
+                    checkbox.setStyleSheet(
+                        "QCheckBox { margin-left:auto; margin-right:auto; }"
+                    )
+                    checkbox_container = QWidget()
+                    layout = QHBoxLayout(checkbox_container)
+                    layout.addWidget(checkbox)
+                    layout.setAlignment(Qt.AlignCenter)
+                    layout.setContentsMargins(8, 0, 0, 0)
+                    self.test_table.setCellWidget(row_pos, 0, checkbox_container)
+
+                    file_name, func_name = test_name.split("::")
+                    self.test_table.setItem(row_pos, 1, QTableWidgetItem(file_name))
+                    self.test_table.setItem(row_pos, 2, QTableWidgetItem(func_name))
+                    self.test_table.setItem(row_pos, 3, QTableWidgetItem("Untested"))
+
             self.test_table.setAlternatingRowColors(True)
             tab_sty = """QTableWidget { alternate-background-color: #333; background-color: #2b2b2b; }"""
             self.test_table.setStyleSheet(tab_sty)
@@ -148,6 +168,8 @@ class TestApp(QWidget):
             checkbox = checkbox_widget.findChild(QCheckBox)
             if checkbox and checkbox.isChecked():
                 test_file = self.test_table.item(row, 1).text()
+                test_file += "::"
+                test_file += self.test_table.item(row, 2).text()
                 selected_tests.append(test_file)
 
         if not selected_tests:
@@ -165,7 +187,7 @@ class TestApp(QWidget):
 
             # Run pytest and capture all output
             process = subprocess.Popen(
-                ["pytest", str(file_path)],
+                ["pytest", f"{self.test_directory / test_file}"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
