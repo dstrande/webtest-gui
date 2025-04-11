@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QCheckBox,
+    QSplitter,
 )
 from PySide6.QtCore import Signal, QObject, Qt, QSize
 from PySide6.QtGui import QIcon
@@ -70,9 +71,33 @@ class TestApp(QWidget):
         button_layout.addWidget(self.change_dir_button)
 
         self.layout.addWidget(self.status_label)
-        self.layout.addWidget(self.test_table)
-        self.layout.addLayout(button_layout)
-        self.layout.addWidget(self.text_area)
+        # self.layout.addWidget(self.test_table)
+        # self.layout.addLayout(button_layout)
+        # self.layout.addWidget(self.text_area)
+
+        # Splitter to allow resizing between test table and log output
+        splitter = QSplitter(Qt.Vertical)
+
+        # Top widget: test table + buttons
+        top_widget = QWidget()
+        top_layout = QVBoxLayout(top_widget)
+        top_layout.addWidget(self.test_table)
+        top_layout.addLayout(button_layout)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Bottom widget: text output
+        bottom_widget = QWidget()
+        bottom_layout = QVBoxLayout(bottom_widget)
+        bottom_layout.addWidget(self.text_area)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add both to splitter
+        splitter.addWidget(top_widget)
+        splitter.addWidget(bottom_widget)
+        splitter.setSizes([400, 200])  # Initial sizes
+
+        self.layout.addWidget(splitter)
+
         self.layout.setContentsMargins(10, 10, 10, 10)
         self.layout.setSpacing(10)
 
