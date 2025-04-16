@@ -1,6 +1,16 @@
-from pathlib import Path
+from os import path
 
-assets_path = Path(__file__).parent.parent.parent / "assets"
+
+def path_to_file(filename):
+    """Return the absolute path of the file in the assets folder.
+
+    Args:
+        filename (str): The filename to find the path for."""
+
+    assets_path = path.join(path.dirname(__file__), "assets")
+
+    return path.abspath(path.join(assets_path, filename))
+
 
 dark_stylesheet = f"""
 QWidget {{
@@ -38,10 +48,10 @@ QCheckBox {{
     color: #ffffff;
 }}
 QCheckBox::indicator:unchecked {{
-    image: url({(assets_path / "circle.svg").as_posix()});
+    image: url({(path_to_file("circle.svg"))});
 }}
 
 QCheckBox::indicator:checked {{
-    image: url({(assets_path / "check-circle.svg").as_posix()});
+    image: url({(path_to_file("check-circle.svg"))});
 }}
 """

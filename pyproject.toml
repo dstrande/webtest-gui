@@ -2,15 +2,14 @@
 name = "webtest-gui"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "dstrandell",email = "dstrande@live.ca"}
-]
+authors = []
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "pyside6 (>=6.9.0,<7.0.0)",
     "selenium (>=4.31.0,<5.0.0)",
-    "pytest (>=8.3.5,<9.0.0)"
+    "pytest (>=8.3.5,<9.0.0)",
+    "pyinstaller (>=6.13.0,<7.0.0)"
 ]
 
 [tool.poetry]

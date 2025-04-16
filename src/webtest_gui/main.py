@@ -4,7 +4,8 @@ import sys
 import threading
 from styles import dark_stylesheet
 from pathlib import Path
-import subprocess
+from os import path
+import pytest
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -35,9 +36,8 @@ class TestApp(QWidget):
     def __init__(self):
         """Initialize the main application window, set up the layout and connect signals."""
         super().__init__()
-        self.setWindowTitle("Website Testing Tracker")
-        self.setWindowIcon(QIcon("app_icon.png"))  # Set application icon for dock
 
+        self.setWindowTitle("Website Testing Tracker")
         self.test_directory = Path("tests")
 
         self.layout = QVBoxLayout()
@@ -61,9 +61,9 @@ class TestApp(QWidget):
 
         self.run_button = QPushButton("Run Selected Tests")
         self.change_dir_button = QPushButton(" Change Test Directory")
-        self.run_button.setIcon(QIcon("assets/play.svg"))
+        self.run_button.setIcon(QIcon(self.path_to_file("assets/play.svg")))
         self.run_button.setIconSize(QSize(25, 25))
-        self.change_dir_button.setIcon(QIcon("assets/folder.svg"))
+        self.change_dir_button.setIcon(QIcon(self.path_to_file("assets/folder.svg")))
         self.change_dir_button.setIconSize(QSize(25, 25))
 
         button_layout = QHBoxLayout()
@@ -71,9 +71,6 @@ class TestApp(QWidget):
         button_layout.addWidget(self.change_dir_button)
 
         self.layout.addWidget(self.status_label)
-        # self.layout.addWidget(self.test_table)
-        # self.layout.addLayout(button_layout)
-        # self.layout.addWidget(self.text_area)
 
         # Splitter to allow resizing between test table and log output
         splitter = QSplitter(Qt.Vertical)
@@ -111,6 +108,13 @@ class TestApp(QWidget):
         self.signals.update_status_signal.connect(self.update_test_status)
 
         self.scan_test_directory()
+
+    def path_to_file(self, filename):
+        """Return the absolute path of the file in the assets folder.
+
+        Args:
+            filename (str): The filename to find the path for."""
+        return path.abspath(path.join(path.dirname(__file__), filename))
 
     def log_output(self, text):
         """Append log messages to the text display area.
@@ -204,25 +208,23 @@ class TestApp(QWidget):
         self.status_label.setText("Status: Running tests...")
         threading.Thread(target=self._execute_tests, args=(selected_tests,)).start()
 
+    def run_pytest(test_args: list[str]) -> int:
+        """Run pytest with the given arguments and return the exit code."""
+        return pytest.main(test_args)
+
     def _execute_tests(self, test_files):
         """Execute each test file using pytest and stream output to the GUI."""
         for test_file in test_files:
-            file_path = self.test_directory / test_file
+            # file_path = self.test_directory / test_file
             self.signals.log_signal.emit(f"\nRunning {test_file}...")
 
-            # Run pytest and capture all output
-            process = subprocess.Popen(
-                ["pytest", f"{self.test_directory / test_file}"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-            )
+            test_py, test_mod = str(test_file).split("::")
+            test_py = path.abspath(path.join(self.test_directory, test_py))
 
-            output, _ = process.communicate()
-            for line in output.splitlines():
-                self.signals.log_signal.emit(line.strip())
+            # Run pytest directly
+            result = pytest.main([test_py, "-k", test_mod], plugins=[])
 
-            if process.returncode == 0:
+            if result == 0:
                 self.signals.update_status_signal.emit(test_file, "✅ Passed")
             else:
                 self.signals.update_status_signal.emit(test_file, "❌ Failed")
@@ -234,7 +236,6 @@ class TestApp(QWidget):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet(dark_stylesheet)
-    app.setWindowIcon(QIcon("app_icon.png"))
     window = TestApp()
     window.resize(800, 600)
     window.show()
